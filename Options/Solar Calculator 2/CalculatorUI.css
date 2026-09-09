@@ -1,0 +1,102 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-main, #0a131c);
+    color: var(--text-primary, #ffffff);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    margin: 0;
+}
+
+.calculator-container {
+    background: var(--bg-card, #0e1c2a);
+    border: 1px solid var(--border-card, #182a3c);
+    padding: 35px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    max-width: 480px;
+    width: 100%;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #8fa0b5);
+    letter-spacing: 0.5px;
+}
+
+input, select {
+    padding: 12px 14px;
+    background-color: var(--bg-sidebar, #060e17);
+    border: 1px solid var(--border-card, #182a3c);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: var(--text-primary, #ffffff);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, select:focus {
+    border-color: var(--accent-cyan, #00ffd5);
+    box-shadow: 0 0 8px rgba(0, 255, 213, 0.2);
+}
+
+select option {
+    background-color: var(--bg-sidebar, #060e17);
+    color: var(--text-primary, #ffffff);
+}
+
+button {
+    background-color: var(--accent-button, #21b6fa);
+    color: var(--text-primary, #ffffff);
+    border: none;
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+button:hover {
+    background-color: var(--accent-blue, #00d2ff);
+    transform: translateY(-1px);
+}
+
+.results-container {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-card, #182a3c);
+}
+
+.status-box {
+    margin-top: 15px;
+    padding: 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.status-success {
+    background-color: rgba(0, 255, 213, 0.12);
+    border: 1px solid var(--accent-cyan, #00ffd5);
+    color: var(--accent-cyan, #00ffd5);
+}
+
+.status-danger {
+    background-color: rgba(255, 75, 75, 0.12);
+    border: 1px solid #ff4b4b;
+    color: #ff6b6b;
+}

@@ -1,0 +1,171 @@
+/* ==========================================================================
+   PURE SOLAR ENERGY - LOGIN / AUTHENTICATION STYLESHEET
+   ========================================================================== */
+
+/* Page Background & Layout Alignment */
+body {
+    background-color: #0b1a24;
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Auth Main Container */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 20px;
+    flex-grow: 1;
+}
+
+/* Modal Card UI Box */
+.modal-box.standalone-box {
+    background-color: #0e2735;
+    border: 1px solid rgba(0, 255, 204, 0.2);
+    border-radius: 12px;
+    padding: 40px 35px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.modal-box.standalone-box:hover {
+    border-color: rgba(0, 255, 204, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Card Header Titles */
+.modal-box h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.modal-subtitle {
+    font-size: 0.9rem;
+    color: #8ca3ba;
+    text-align: center;
+    margin-bottom: 25px;
+    line-height: 1.4;
+}
+
+/* Input Fields Grouping */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 18px;
+}
+
+.input-group label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #00ffcc;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+}
+
+.input-group input {
+    background-color: #0b1a24;
+    border: 1px solid #1e3342;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    color: #ffffff;
+    outline: none;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.input-group input::placeholder {
+    color: #5d758d;
+}
+
+.input-group input:focus {
+    border-color: #00ffcc;
+    box-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
+}
+
+/* Primary Submit Button */
+.btn-submit {
+    width: 100%;
+    margin-top: 10px;
+    padding: 13px;
+    background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+    border: none;
+    border-radius: 6px;
+    color: #0b1a24;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-submit:hover {
+    opacity: 0.95;
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+/* Footer Action Link */
+.modal-box p a {
+    color: #ff9933;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.modal-box p a:hover {
+    color: #ffb366;
+    text-decoration: underline;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+    .modal-box.standalone-box {
+        padding: 30px 20px;
+    }
+}
+
+/* ==================== */
+
+/* Return to Home Styling */
+.return-home-container {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: center;
+}
+
+.btn-return-home {
+    display: inline-block;
+    color: #8ca3ba;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 8px 16px;
+    border: 1px solid rgba(0, 255, 204, 0.25);
+    border-radius: 6px;
+    transition: all 0.25s ease;
+}
+
+.btn-return-home:hover {
+    color: #00ffcc;
+    border-color: #00ffcc;
+    background-color: rgba(0, 255, 204, 0.08);
+    transform: translateY(-1px);
+}
+

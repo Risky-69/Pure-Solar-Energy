@@ -1,0 +1,90 @@
+/* Adjust responsive stacked state layout for mobile devices */
+@media (max-width: 768px) {
+    .nav-links a[href*="Login"] {
+        margin-left: 0;
+        margin-top: 10px;
+        width: fit-content;
+        align-self: center;
+    }
+}
+
+:root {
+    --bg-dark-blue: #0b1a30;
+    --bg-med-blue: #162a45;
+    --electric-blue: #0052cc;
+    --bright-blue: #1e70e0;
+    --accent-yellow: #f4b41a;
+    --text-light: #ffffff;
+    --text-muted: #b0c4de;
+}
+
+body {
+    background-color: var(--bg-dark-blue);
+    color: var(--text-light);
+    overflow-x: hidden;
+}
+
+/* Navbar Styling */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 80px;
+    background: linear-gradient(to bottom, rgba(11,26,48,1), rgba(22,42,69,0.8));
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.logo-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-accent {
+    color: var(--accent-yellow);
+    font-size: 5rem;
+}
+
+.logo-main {
+    font-weight: 800;
+    letter-spacing: 1px;
+    font-size: 3rem;
+}
+
+.tagline {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+}
+
+.nav-links a {
+    color: var(--text-light);
+    text-decoration: none;
+    margin-left: 25px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-links a:hover, .nav-links a.active {
+    color: var(--accent-yellow);
+}
+
+/* Styled Yellow Border for Log In Button */
+.nav-links a[href*="Login"] {
+    border: 2px solid var(--accent-yellow);
+    background-color: var(--accent-yellow);
+    color: black;
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+.nav-links a[href*="Login"]:hover {
+    background-color: var(--accent-yellow);
+    color: var(--bg-dark-blue);
+    box-shadow: 0 0 12px rgba(244, 180, 26, 0.4);
+}

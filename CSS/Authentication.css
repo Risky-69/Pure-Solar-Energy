@@ -1,0 +1,186 @@
+/* ==========================================================================
+   AUTHENTICATION STYLESHEET - SIGN IN & SIGN UP MODAL ENGINE
+   ========================================================================== */
+
+@import url(Login.css);
+@import url(SignUp.css);
+
+/* Authentication Nav Links (In Header Area) */
+.nav-links .auth-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Styled Button Look for Sign Up */
+.nav-links .auth-signup-btn {
+    background-color: #f4b41a; /* Maps to var(--accent-yellow) from main root */
+    color: #0b1a30 !important; /* Maps to var(--bg-dark-blue) from main root */
+    padding: 8px 18px;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(244, 180, 26, 0.2);
+}
+
+.nav-links .signup-btn:hover {
+    background-color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(255, 255, 255, 0.15);
+}
+
+.nav-links .auth-login-link:hover {
+    color: #f4b41a;
+}
+
+/* Full Screen Interactive Modal Window Overlay Base */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(5, 13, 26, 0.85); /* Smooth dark tinted backing blur */
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+/* Active State Triggered via JavaScript ClassList Actions */
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Center Content Dialogue Box */
+.modal-box {
+    background-color: #ffffff;
+    color: #333333;
+    padding: 40px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+    /* height: 500px; */
+}
+
+.modal-overlay.active .modal-box {
+    transform: translateY(0);
+}
+
+/* Floating Cross Close Control Button */
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #888888;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #e74c3c;
+}
+
+.modal-box h2 {
+    font-size: 1.8rem;
+    color: #0b1a30;
+    margin-bottom: 5px;
+}
+
+.modal-subtitle {
+    font-size: 0.9rem;
+    color: #666666;
+    margin-bottom: 25px;
+}
+
+/* Credentials Entry Field Groups */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.input-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #444444;
+}
+
+.input-group input {
+    padding: 12px 16px;
+    border: 1px solid #cccccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.input-group input:focus {
+    border-color: #1e70e0; /* Maps to var(--bright-blue) */
+}
+
+/* Submission CTA Submit Action Button */
+.btn-submit {
+    width: 100%;
+    background-color: #1e70e0;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+.btn-submit:hover {
+    background-color: #0052cc;
+}
+
+/* Layout stacking structure overrides for small mobile screens */
+@media (max-width: 768px) {
+    .nav-links {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+    .nav-links a {
+        margin-left: 0 !important;
+    }
+    .nav-links 
+    
+    .signup-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 160px);
+  padding: 40px 20px;
+}
+
+.standalone-box {
+  width: 100%;
+  max-width: 420px;
+  background: #002244;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}

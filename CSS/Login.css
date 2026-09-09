@@ -1,0 +1,147 @@
+/* =========================================================================
+   SignUp.css - Separate stylesheet for Pure Solar Energy Authentication
+   ========================================================================= */
+
+/* Main Container to center the card */
+.auth-page-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 160px);
+    padding: 40px 20px;
+    background-color: #f4f6f9;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+/* Card Box */
+.modal-box.standalone-box {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 440px;
+    border: 1px solid #e1e7ec;
+    box-sizing: border-box;
+}
+
+/* Form Title */
+.modal-box h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 25px;
+    text-align: center;
+    color: #1e293b;
+}
+
+/* Input Group */
+.input-group {
+    margin-bottom: 18px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #334155;
+    margin-bottom: 8px;
+}
+
+/* Field Container for Inputs with Icons */
+.field-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 40px 12px 14px; /* Space on right for toggle icon */
+    font-size: 0.95rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #0f172a;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.input-group input::placeholder {
+    color: #94a3b8;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
+}
+
+/* Toggle Password Eye Icon */
+.toggle-eye {
+    position: absolute;
+    right: 14px;
+    cursor: pointer;
+    color: #64748b;
+    user-select: none;
+    display: flex;
+    align-items: center;
+}
+
+.toggle-eye:hover {
+    color: #1e293b;
+}
+
+/* Submit Button */
+.btn-submit {
+    width: 100%;
+    padding: 13px;
+    background-color: #1d4ed8; /* Blue accent matching your primary color */
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.btn-submit:hover {
+    background-color: #1e40af;
+}
+
+/* Divider & Footer Link */
+.auth-footer {
+    position: relative;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 25px;
+    margin-top: 30px;
+    text-align: center;
+}
+
+.shield-icon {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    padding: 0 10px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.auth-footer-text {
+    font-size: 0.95rem;
+    color: #475569;
+    margin: 0;
+}
+
+.auth-footer-link {
+    font-weight: 700;
+    color: #f97316; /* Vibrant orange accent link */
+    text-decoration: none;
+}
+
+.auth-footer-link:hover {
+    text-decoration: underline;
+}
