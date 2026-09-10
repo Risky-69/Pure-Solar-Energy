@@ -13,7 +13,7 @@
 
 
         <div class="option-item" onclick="calculatorOption('Option 2')">
-            <a href="../Options/Solar Calculator 2/calculator.php" class="calculator-card-link">
+            <a href="../User/UserOptions/Solar Calculator 2/Calculator.php" class="calculator-card-link">
                 <img src="../src/SolarGrid.png" alt="" class="options-img">
             <h3>Solar Calculator</h3>
         </div>

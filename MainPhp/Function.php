@@ -5,17 +5,17 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // Configure secure session cookie settings
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'domain'   => '',
-    'secure'   => false,
-    'httponly' => true,
-    'samesite' => 'Lax'
-]);
+// session_set_cookie_params([
+//     'lifetime' => 0,
+//     'path'     => '/',
+//     'domain'   => '',
+//     'secure'   => false,
+//     'httponly' => true,
+//     'samesite' => 'Lax'
+// ]);
 
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    // session_start();
 }
 
 // Database Credentials & PDO Connection

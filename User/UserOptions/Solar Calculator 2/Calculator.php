@@ -10,6 +10,7 @@
 <body>
     <div class="calculator-container">
         <h2>Solar Energy Calculator</h2>
+        <a href="User/UserIndex.php" class="btn-return-home">🏠 Return to Home</a>
        
         
         <!-- Input Form -->
