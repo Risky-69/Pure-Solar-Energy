@@ -1,168 +1,60 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
-    require_once "../db.php";
 }
 
 ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// $host    = 'localhost';
-// $db      = 'puresolarenergy';
-// $user    = 'root';
-// $pass    = 'Password'; 
-// $charset = 'utf8mb4';
+$host     = "127.0.0.1";
+$port     = 3306;
+$username = "root";
+$pass     = ""; 
+$dbname   = "puresolarenergy";
+$charset  = "utf8mb4";
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=$charset";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo = new PDO($dsn, $username, $pass, $options);
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// 1. Resolve user ID
 $userId = $_SESSION['user_id'] ?? null;
 
-if (!$userId && isset($_SESSION['username'])) {
-    try {
-        // Double check if your table uses 'id' or 'user_id' as the primary key
-        $stmt = $pdo->prepare("SELECT id AS user_id FROM users WHERE username = ? OR email = ?");
-        $stmt->execute([$_SESSION['username'], $_SESSION['username']]);
-        $userData = $stmt->fetch();
-        if ($userData) {
-            $userId = $userData['user_id'];
-            $_SESSION['user_id'] = $userId; 
-        }
-    } catch (PDOException $e) {
-        // If 'users' query fails, output error for debugging
-        die("User lookup failed: " . $e->getMessage());
-    }
-}
-
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
-}
-
-/* =========================================================
-   HANDLE CART ACTIONS (ADD, UPDATE, REMOVE, CLEAR)
-========================================================= */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action     = $_POST['action'] ?? '';
-    $product_id = intval($_POST['product_id'] ?? 0);
-    $quantity   = intval($_POST['quantity'] ?? 1);
-
-    if ($action === 'add') {
-        $quantity = max(1, $quantity);
-        if ($product_id > 0) {
-            if ($userId) {
-                // Database Cart for Logged-In Users
-                $stmt = $pdo->prepare("
-                    INSERT INTO cart (user_id, product_id, quantity) 
-                    VALUES (?, ?, ?) 
-                    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
-                ");
-                $stmt->execute([$userId, $product_id, $quantity]);
-            } else {
-                // Session Cart for Guests
-                if (isset($_SESSION['cart'][$product_id])) {
-                    $_SESSION['cart'][$product_id]['quantity'] += $quantity;
-                } else {
-                    $stmt = $pdo->prepare("SELECT product_id, product_name, price FROM products WHERE product_id = ?");
-                    $stmt->execute([$product_id]);
-                    if ($product = $stmt->fetch()) {
-                        $_SESSION['cart'][$product_id] = [
-                            'id'       => $product['product_id'],
-                            'name'     => $product['product_name'],
-                            'price'    => $product['price'],
-                            'quantity' => $quantity
-                        ];
-                    }
-                }
-            }
-        }
-    } elseif ($action === 'update') {
-        if ($userId) {
-            if ($quantity > 0) {
-                $stmt = $pdo->prepare("UPDATE cart SET quantity = ? WHERE user_id = ? AND product_id = ?");
-                $stmt->execute([$quantity, $userId, $product_id]);
-            } else {
-                $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ? AND product_id = ?");
-                $stmt->execute([$userId, $product_id]);
-            }
-        } else {
-            if ($quantity > 0 && isset($_SESSION['cart'][$product_id])) {
-                $_SESSION['cart'][$product_id]['quantity'] = $quantity;
-            } else {
-                unset($_SESSION['cart'][$product_id]);
-            }
-        }
-    } elseif ($action === 'remove') {
-        if ($userId) {
-            $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ? AND product_id = ?");
-            $stmt->execute([$userId, $product_id]);
-        } else {
-            unset($_SESSION['cart'][$product_id]);
-        }
-    } elseif ($action === 'clear') {
-        if ($userId) {
-            $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ?");
-            $stmt->execute([$userId]);
-        } else {
-            $_SESSION['cart'] = [];
-        }
-    }
-
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-        echo json_encode(['status' => 'success']);
-        exit;
-    }
-
+// Handle Item Removal
+if (isset($_POST['remove_id'])) {
+    $removeStmt = $pdo->prepare("DELETE FROM cart WHERE id = :id");
+    $removeStmt->execute(['id' => $_POST['remove_id']]);
     header("Location: Cart.php");
     exit;
 }
 
-// Fetch Cart Items for Display
-$cartItems = [];
-$subtotal = 0;
-$totalItems = 0;
-
+// Fetch cart items joined with products
 if ($userId) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT c.product_id, c.quantity, p.product_name, p.price 
-            FROM cart c 
-            JOIN products p ON c.product_id = p.product_id 
-            WHERE c.user_id = ?
-        ");
-        $stmt->execute([$userId]);
-        $cartRows = $stmt->fetchAll();
-
-        foreach ($cartRows as $row) {
-            $cartItems[$row['product_id']] = [
-                'name'     => $row['product_name'],
-                'price'    => $row['price'],
-                'quantity' => $row['quantity']
-            ];
-            $subtotal += $row['price'] * $row['quantity'];
-            $totalItems += $row['quantity'];
-        }
-    } catch (PDOException $e) {
-        die("Error fetching cart data: " . $e->getMessage());
-    }
+    $stmt = $pdo->prepare("
+        SELECT c.id AS cart_id, c.quantity, p.product_name, p.product_type, p.price 
+        FROM cart c 
+        JOIN products p ON c.product_id = p.id 
+        WHERE c.user_id = :user_id
+    ");
+    $stmt->execute(['user_id' => $userId]);
 } else {
-    foreach ($_SESSION['cart'] as $id => $item) {
-        $cartItems[$id] = $item;
-        $subtotal += $item['price'] * $item['quantity'];
-        $totalItems += $item['quantity'];
-    }
+    $stmt = $pdo->query("
+        SELECT c.id AS cart_id, c.quantity, p.product_name, p.product_type, p.price 
+        FROM cart c 
+        JOIN products p ON c.product_id = p.id 
+        WHERE c.user_id IS NULL
+    ");
 }
+
+$cartItems = $stmt->fetchAll();
+$grandTotal = 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -171,85 +63,214 @@ if ($userId) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopping Cart - Pure Solar Energy</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b132b; color: #ffffff; margin: 0; padding: 20px; }
-        .cart-container { max-width: 1000px; margin: 30px auto; background: #1c2541; border-radius: 10px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        h1 { color: #4cc9f0; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #3a506b; }
-        th { background-color: #0b132b; color: #4cc9f0; }
-        .qty-input { width: 60px; padding: 5px; border-radius: 4px; border: 1px solid #3a506b; background: #0b132b; color: #fff; text-align: center; }
-        .btn { padding: 8px 14px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; }
-        .btn-update { background-color: #3a506b; color: white; }
-        .btn-remove { background-color: #e63946; color: white; }
-        .btn-clear { background-color: #6c757d; color: white; }
-        .btn-checkout { background-color: #4cc9f0; color: #0b132b; float: right; font-size: 1.1rem; }
-        .cart-summary { background: #0b132b; padding: 20px; border-radius: 8px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .empty-cart { text-align: center; padding: 40px 0; color: #8ca3ba; }
-        .empty-cart a { color: #4cc9f0; text-decoration: none; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #080e1e;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .cart-wrapper {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #1e293b;
+        }
+        .cart-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: #111a2e;
+            color: #00f2fe;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-nav:hover {
+            border-color: #00f2fe;
+            background: #16223b;
+        }
+        .btn-home {
+            background: #1e293b;
+            color: #fff;
+        }
+        .btn-home:hover {
+            background: #334155;
+            border-color: #475569;
+        }
+        .cart-card {
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            text-align: left;
+            padding: 14px 16px;
+            color: #00f2fe;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #1e293b;
+        }
+        td {
+            padding: 18px 16px;
+            border-bottom: 1px solid #1e293b;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+        .badge-type {
+            color: #00f2fe;
+            background: rgba(0, 242, 254, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .empty-cart {
+            text-align: center;
+            padding: 50px 20px;
+            color: #64748b;
+        }
+        .empty-cart p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        .btn-remove {
+            background: transparent;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .btn-remove:hover {
+            text-decoration: underline;
+        }
+        .cart-summary {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #1e293b;
+        }
+        .grand-total-label {
+            font-size: 1rem;
+            color: #94a3b8;
+        }
+        .grand-total-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #00f2fe;
+        }
+        .btn-checkout {
+            padding: 12px 32px;
+            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-<div class="cart-container">
-    <h1>Your Shopping Cart</h1>
-
-    <?php if (empty($cartItems)): ?>
-        <div class="empty-cart">
-            <h3>Your cart is empty.</h3>
-            <p><a href="/User/UserOptions/View%20Products/Products.php">&larr; Continue Shopping</a></p>
+<div class="cart-wrapper">
+    <div class="cart-header">
+        <h1 class="cart-title">Your Shopping Cart</h1>
+        <div class="header-actions">
+            <a href="../MAIN.php" class="btn-nav btn-home">🏠 Return to Home</a>
+            <a href="./UserOptions/View Products/Products.php?type=All" class="btn-nav">&larr; Continue Shopping</a>
         </div>
-    <?php else: ?>
-        <table>
-            <thead>
-                <tr>
-                    <th>Product</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Total</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($cartItems as $id => $item): ?>
+    </div>
+
+    <div class="cart-card">
+        <?php if (!empty($cartItems)): ?>
+            <table>
+                <thead>
                     <tr>
-                        <td><?= htmlspecialchars($item['name']) ?></td>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Subtotal</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($cartItems as $item): 
+                        $subtotal = $item['price'] * $item['quantity'];
+                        $grandTotal += $subtotal;
+                    ?>
+                    <tr>
+                        <td style="color: #fff; font-weight: 600;"><?= htmlspecialchars($item['product_name']) ?></td>
+                        <td><span class="badge-type"><?= htmlspecialchars($item['product_type']) ?></span></td>
                         <td>$<?= number_format($item['price'], 2) ?></td>
+                        <td><?= htmlspecialchars($item['quantity']) ?></td>
+                        <td style="color: #fff; font-weight: 600;">$<?= number_format($subtotal, 2) ?></td>
                         <td>
-                            <form method="POST" action="Cart.php" style="display: flex; gap: 5px;">
-                                <input type="hidden" name="action" value="update">
-                                <input type="hidden" name="product_id" value="<?= $id ?>">
-                                <input type="number" name="quantity" value="<?= $item['quantity'] ?>" min="1" class="qty-input">
-                                <button type="submit" class="btn btn-update">Update</button>
-                            </form>
-                        </td>
-                        <td>$<?= number_format($item['price'] * $item['quantity'], 2) ?></td>
-                        <td>
-                            <form method="POST" action="Cart.php">
-                                <input type="hidden" name="action" value="remove">
-                                <input type="hidden" name="product_id" value="<?= $id ?>">
-                                <button type="submit" class="btn btn-remove">Remove</button>
+                            <form method="POST" style="margin:0;">
+                                <input type="hidden" name="remove_id" value="<?= $item['cart_id'] ?>">
+                                <button type="submit" class="btn-remove">Remove</button>
                             </form>
                         </td>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
 
-        <div class="cart-summary">
-            <div>
-                <form method="POST" action="Cart.php" style="display: inline;">
-                    <input type="hidden" name="action" value="clear">
-                    <button type="submit" class="btn btn-clear">Clear Cart</button>
-                </form>
-                <a href="/User/UserOptions/View%20Products/Products.php" style="color: #8ca3ba; margin-left: 15px; text-decoration: none;">&larr; Continue Shopping</a>
+            <div class="cart-summary">
+                <div>
+                    <span class="grand-total-label">Grand Total: </span>
+                    <span class="grand-total-val">$<?= number_format($grandTotal, 2) ?></span>
+                </div>
+                <button type="button" class="btn-checkout">Checkout</button>
             </div>
-            <div>
-                <h3>Total (<?= $totalItems ?> items): <span style="color: #4cc9f0;">$<?= number_format($subtotal, 2) ?></span></h3>
-                <a href="#" class="btn btn-checkout">Proceed to Checkout &rarr;</a>
+        <?php else: ?>
+            <div class="empty-cart">
+                <p>Your shopping cart is currently empty.</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <a href="UserIndex.php" class="btn-nav btn-home">Return to Home</a>
+                    <a href="./UserOptions/View Products/Products.php?type=All" class="btn-nav">Browse Products</a>
+                </div>
             </div>
-        </div>
-    <?php endif; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 </body>

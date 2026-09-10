@@ -3,14 +3,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 1. INCLUDE YOUR DATABASE CONNECTION FILE HERE
-// Adjust relative path if your db connection file is located elsewhere
-// Correct relative path to root db.php
-if (file_exists('../../db.php')) {
-    require_once '../../db.php';
-} elseif (file_exists('../db.php')) {
-    require_once '../db.php';
-}
+// Absolute path resolution to project root db.php
+require_once __DIR__ . '/../../db.php';
 
 $message = "";
 $message_type = "";
@@ -19,41 +13,22 @@ $username = "";
 $email = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    
-    // Get and sanitize inputs
     $username        = trim($_POST["username"] ?? "");
     $email           = trim($_POST["email"] ?? "");
     $password        = $_POST["password"] ?? "";
     $confirmPassword = $_POST["confirmPassword"] ?? "";
-    
-    /* =========================================
-       1. REQUIRED FIELD VALIDATION
-    ========================================= */
+
     if (empty($username) || empty($email) || empty($password) || empty($confirmPassword)) {
         $message = "All fields are required.";
         $message_type = "error";
-        
-    /* =========================================
-       2. EMAIL FORMAT VALIDATION
-    ========================================= */
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $message = "Please enter a valid email address.";
         $message_type = "error";
-
-    /* =========================================
-       3. PASSWORD MATCH VALIDATION
-    ========================================= */
     } elseif ($password !== $confirmPassword) {
         $message = "Passwords do not match.";
         $message_type = "error";
-
     } else {
-        
-        /* =========================================
-           4. FIND USER & VERIFY CREDENTIALS
-        ========================================= */
         if (isset($conn)) {
-            // FIXED: Table name updated to 'users' and removed non-existent columns (full_name, role)
             $stmt = $conn->prepare(
                 "SELECT id, username, email, password
                  FROM `users`
@@ -68,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $user = $result->fetch_assoc();
 
                 if (password_verify($password, $user["password"])) {
-                    // $_SESSION["user_id"]  = $user["id"];
+                    $_SESSION["user_id"]  = $user["id"];
                     $_SESSION["username"] = $user["username"];
                     $_SESSION["email"]    = $user["email"];
 
@@ -84,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
             $stmt->close();
         } else {
-            $message = "Database connection missing. Check your db.php include path.";
+            $message = "Database connection missing.";
             $message_type = "error";
         }
     }
@@ -100,27 +75,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     <link rel="stylesheet" href="Login.css">
 </head>
 <body>
-
-<div class="login-card">
-    <h2>Sign In</h2>
-    <?php if (!empty($error)): ?>
-        <div class="error"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
-    <form method="POST" action="login.php">
-        <div class="form-group">
-            <label>Username or Email</label>
-            <input type="text" name="username" required>
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required>
-        </div>
-        <button type="submit">Login</button>
-    </form>
-</div>
-
-</body>
-</html>
 
     <main class="auth-container">
         <div class="modal-box standalone-box">
@@ -145,13 +99,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
 
                 <div class="input-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                    <label for="password">PASSWORD</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)" aria-label="Toggle password visibility">👁️</button>
+                    </div>
                 </div>
 
                 <div class="input-group">
-                    <label for="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required autocomplete="current-password">
+                    <label for="confirmPassword">CONFIRM PASSWORD</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required autocomplete="current-password">
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('confirmPassword', this)" aria-label="Toggle password visibility">👁️</button>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-submit">Proceed</button>
@@ -161,9 +121,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 Don't have an account? <a href="SignUp.php" style="color: #ff9900;">Sign Up</a>
             </p>
 
-            <!-- RETURN TO HOME BUTTON -->
             <div class="return-home-container">
-                <a href="/index.php" class="btn-return-home">
+                <a href="../../MAIN.php" class="btn-return-home">
                     &larr; Return to Home
                 </a>
             </div>
@@ -200,7 +159,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         return true;
+        
     }
-    </script>
+function togglePasswordVisibility(fieldId, btnElement) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    if (field.type === 'password') {
+        field.type = 'text';
+        btnElement.textContent = '🙈';
+    } else {
+        field.type = 'password';
+        btnElement.textContent = '👁️';
+    }
+}
+
+    </script>   
 </body>
 </html>

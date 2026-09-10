@@ -47,11 +47,15 @@ $message = $_GET['message'] ?? null;
                 <div class="input-group">
                     <label for="password">Password</label>
                     <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="new-password">
+                    <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)" aria-label="Toggle password visibility">👁️</button>
+
                 </div>
 
                 <div class="input-group">
                     <label for="confirm_password">Confirm Password</label>
                     <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required autocomplete="new-password">
+                    <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)" aria-label="Toggle password visibility">👁️</button>
+                    
                 </div>
 
                 <button type="submit" class="btn-submit">Proceed</button>

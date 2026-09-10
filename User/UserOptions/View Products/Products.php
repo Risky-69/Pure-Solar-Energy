@@ -1,5 +1,4 @@
 <?php
-// Always start the session first
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -8,13 +7,14 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-$host    = 'localhost';
-$db      = 'puresolarenergy';
-$user    = 'root';
-$pass    = 'Password'; // Replace with your MySQL password
-$charset = 'utf8mb4';
+$host     = "127.0.0.1";
+$port     = 3306;
+$username = "root";
+$pass     = ""; 
+$dbname   = "puresolarenergy";
+$charset  = "utf8mb4";
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=$charset";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -22,23 +22,21 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo = new PDO($dsn, $username, $pass, $options);
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
 }
 
-// 1. UPDATED: Check for user_id OR username to accurately confirm session state
-$isLoggedIn = isset($_SESSION['user_id']) || isset($_SESSION['username']); 
+$isLoggedIn = isset($_SESSION['user_id']); 
 
-// Category filtering
 $selectedType = $_GET['type'] ?? 'All';
 
 if ($selectedType !== 'All' && !empty($selectedType)) {
     $typeQuery = rtrim($selectedType, 's'); 
-    $stmt = $pdo->prepare("SELECT * FROM products WHERE product_type LIKE :type ORDER BY product_id DESC");
+    $stmt = $pdo->prepare("SELECT * FROM products WHERE product_type LIKE :type ORDER BY id DESC");
     $stmt->execute(['type' => "%$typeQuery%"]);
 } else {
-    $stmt = $pdo->query("SELECT * FROM products ORDER BY product_id DESC");
+    $stmt = $pdo->query("SELECT * FROM products ORDER BY id DESC");
 }
 
 $products = $stmt->fetchAll();
@@ -50,6 +48,73 @@ $products = $stmt->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solar Solutions Dashboard</title>
     <link rel="stylesheet" href="./Products/style.css">
+    <style>
+        /* Centered Cart Notification Modal */
+        .cart-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s ease-in-out;
+        }
+
+        .cart-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .cart-modal-card {
+            background: #111a2e;
+            border: 1px solid #00f2fe;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            width: 320px;
+            text-align: center;
+            transform: scale(0.8);
+            transition: transform 0.25s ease-in-out;
+        }
+
+        .cart-modal-overlay.active .cart-modal-card {
+            transform: scale(1);
+        }
+
+        .cart-modal-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .cart-modal-title {
+            color: #fff;
+            font-size: 1.25rem;
+            margin-bottom: 8px;
+        }
+
+        .cart-modal-text {
+            color: #8ca3ba;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .cart-modal-btn {
+            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
 
@@ -71,23 +136,21 @@ $products = $stmt->fetchAll();
         </nav>
 
         <div class="sidebar-footer">
-            <a href="../../../User/UserIndex.php" class="return-main-btn">Return to Main</a>
+            <a href="../../UserIndex.php" class="return-main-btn">Return to Main</a>
         </div>
     </aside>
 
     <!-- MAIN CATALOG INTERFACE -->
     <main>
-        <!-- TOP HEADER BAR -->
         <header>
             <h2 id="view-title">
                 <?= isset($_GET['type']) && $_GET['type'] !== 'All' ? htmlspecialchars($_GET['type']) . 's' : 'All Products' ?> 
             </h2>
             <div class="search-container">
-                <input type="text" id="catalog-search" placeholder="Search products..." oninput="searchCatalog()">
+                <input type="text" id="catalog-search" placeholder="Search products...">
             </div>
         </header>
         
-        <!-- PRODUCT CATALOG GRID -->
         <div class="product-grid">
         <?php if (!empty($products)): ?>
             <?php foreach ($products as $item): ?>
@@ -95,7 +158,7 @@ $products = $stmt->fetchAll();
                     <div>
                         <span class="badge-type" style="color: #00f2fe; font-size: 0.75rem; text-transform: uppercase; font-weight: bold;"><?= htmlspecialchars($item['product_type']) ?></span>
                         <h3 style="margin: 10px 0; font-size: 1.1rem; color: #fff;"><?= htmlspecialchars($item['product_name']) ?></h3>
-                        <p style="color: #94a3b8; font-size: 0.85rem; line-height: 1.4; margin-bottom: 15px;"><?= htmlspecialchars($item['product_info']) ?></p>
+                        <p style="color: #94a3b8; font-size: 0.85rem; line-height: 1.4; margin-bottom: 15px;"><?= htmlspecialchars($item['product_info'] ?? '') ?></p>
                     </div>
                     
                     <div>
@@ -104,10 +167,9 @@ $products = $stmt->fetchAll();
                             <span style="font-size: 0.8rem; color: #64748b;">Stock: <?= htmlspecialchars($item['quantity']) ?></span>
                         </div>
                         
-                        <!-- 2. UPDATED: Unified button logic that fires JS depending on login state -->
                         <button type="button" 
                                 class="btn-cart"
-                                onclick="<?= $isLoggedIn ? "addToCart(" . $item['product_id'] . ")" : "showLoginModal()" ?>"
+                                onclick="addToCart(<?= $item['id'] ?>, '<?= htmlspecialchars(addslashes($item['product_name'])) ?>')"
                                 style="width: 100%; margin-top: 15px; padding: 10px; background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%); border: none; border-radius: 6px; color: #000; font-weight: bold; cursor: pointer;">
                                 Add to Cart
                         </button>
@@ -120,89 +182,48 @@ $products = $stmt->fetchAll();
         </div>
     </main>
 
-    <!-- AUTHENTICATION REQUIRED MODAL -->
-    <!-- <div id="loginModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-icon">&#128274;</div>
-            <h2>Authentication Required</h2>
-            <p>Please log in to your account to add items to your shopping cart.</p>
-            <div class="modal-actions">
-                <a href="/MainPhp/Authentication/Login.php" class="modal-btn btn-login">Login / Sign Up</a>
-                <button type="button" class="modal-btn btn-close" onclick="closeLoginModal()">Cancel</button>
-            </div>
+    <!-- CENTERED ADD TO CART SUCCESS MODAL -->
+    <div id="cartModal" class="cart-modal-overlay">
+        <div class="cart-modal-card">
+            <div class="cart-modal-icon">🛒</div>
+            <h3 class="cart-modal-title">Item Added!</h3>
+            <p class="cart-modal-text" id="cartModalText">Product has been added to your shopping cart.</p>
+            <button type="button" class="cart-modal-btn" onclick="closeCartModal()">Continue Shopping</button>
         </div>
-    </div> -->
+    </div>
 
-    <!-- FLOATING TOAST NOTIFICATION -->
-    <div class="toast" id="toast-banner">Added to Cart!</div>
-
-    <!-- 3. UPDATED: JavaScript includes AJAX submission and Toast triggers -->
 <script>
-function showLoginModal() {
-    const modal = document.getElementById('loginModal');
-    if (modal) {
-        modal.classList.add('active');
-    }
-}
-
-function closeLoginModal() {
-    const modal = document.getElementById('loginModal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
-}
-
-// Handles submitting the item to Cart.php silently in the background
-function addToCart(productId) {
+function addToCart(productId, productName) {
     const formData = new FormData();
-    formData.append('action', 'add');
     formData.append('product_id', productId);
-    formData.append('quantity', 1);
 
-    // Ensure this path matches the exact URL route to your Cart.php file
-    // Adjust path if Cart.php is in a subfolder (e.g., '/User/Cart.php' or 'Cart.php')
-    fetch('Cart.php', {
+    fetch('add_to_cart.php', {
         method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
         body: formData
     })
-    .then(async response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        if (data.status === 'success') {
-            showToast("Added to Cart!");
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('cartModalText').innerText = `"${productName}" was added to your cart.`;
+            document.getElementById('cartModal').classList.add('active');
         } else {
-            console.error('Database/PHP Error:', data.message);
-            showToast("Failed to add item");
+            alert(data.message || 'Error adding item to cart.');
         }
     })
     .catch(error => {
-        console.error('Error adding to cart:', error);
-        showToast("Error adding item");
+        console.error('Error:', error);
+        alert('An unexpected error occurred.');
     });
 }
 
-// Triggers the pop-up notification
-function showToast(message) {
-    const toast = document.getElementById('toast-banner');
-    if (toast) {
-        toast.innerText = message;
-        toast.classList.add('show');
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
+function closeCartModal() {
+    document.getElementById('cartModal').classList.remove('active');
 }
 
 window.addEventListener('click', function(event) {
-    const modal = document.getElementById('loginModal');
+    const modal = document.getElementById('cartModal');
     if (event.target === modal) {
-        closeLoginModal();
+        closeCartModal();
     }
 });
 </script>

@@ -1,16 +1,3 @@
-<?php
-// ALWAYS start session before any HTML output
-// session_set_cookie_params([
-//     'lifetime' => 0,
-//     'path' => '/',
-//     'domain' => '',
-//     'secure' => false,
-//     'httponly' => true,
-//     'samesite' => 'Lax'
-// ]);
-// session_start();
-// ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

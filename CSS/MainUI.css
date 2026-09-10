@@ -506,3 +506,31 @@ body {
         margin-top: 30px; 
     }
 }
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding-right: 40px; /* Leaves space for the toggle icon */
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #8ca3ba;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0;
+    line-height: 1;
+    user-select: none;
+}
+
+.toggle-password:hover {
+    color: #00f2fe;
+}

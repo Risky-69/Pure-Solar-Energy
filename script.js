@@ -121,3 +121,16 @@ window.onclick = function(event) {
         closeLoginModal();
     }
 };
+
+function togglePasswordVisibility(fieldId, btnElement) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    if (field.type === 'password') {
+        field.type = 'text';
+        btnElement.textContent = '🙈';
+    } else {
+        field.type = 'password';
+        btnElement.textContent = '👁️';
+    }
+}

@@ -1,5 +1,5 @@
 <?php
-// Display errors for debugging (disable in production)
+// Display errors for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -18,14 +18,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection
-$host    = 'localhost';
-$db      = 'puresolarenergy';
-$user    = 'root';
-$pass    = 'Password';
-$charset = 'utf8mb4';
+// Database Credentials & PDO Connection
+$host     = "127.0.0.1";
+$port     = 3306;
+$username = "root";
+$pass     = ""; 
+$dbname   = "puresolarenergy";
+$charset  = "utf8mb4";
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=$charset";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -33,7 +34,7 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo = new PDO($dsn, $username, $pass, $options);
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
 }
