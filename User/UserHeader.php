@@ -3,38 +3,81 @@
         <span class="logo-accent"></span><span class="logo-main">PURE SOLAR</span>
         <div class="tagline">Pure Power Pure Savings</div>
     </div>
+    
     <nav class="nav-links">
-        <a href="MAIN.php">Home</a>
-        <a href="UserOptions/View Products/Products.php" class="prod-link product-btn">Products</a>
-        <a href="MAIN.php#contacts">Contacts</a>
-
-        <a href="Cart.php" class="cart-btn" aria-label="Shopping Cart">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cart-icon">
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <path d="M16 10a4 4 0 0 1-8 0"></path>
-            </svg>
-            <span class="cart-count">0</span>
-        </a>
-
-        <div class="user-menu-wrapper" style="position: relative; display: inline-block;">
-            <button class="auth-link auth-signup-btn" onclick="toggleUserDropdown(event)" style="border: none; cursor: pointer;">
+        <!-- <a href="UserIndex.php">Home</a> -->
+        <a href="UserOptions/View Products/Products.php?type=All" class="prod-link product-btn">Products</a>
+        <a href="../User/UserOptions/Solar Calculator 2/Calculator.php">Solar Calculator</a>
+        
+        <!-- User Dropdown Menu -->
+        <div class="user-menu-wrapper">
+            <button type="button" id="meBtn" class="auth-link auth-signup-btn">
                 Me ▾
             </button>
 
-            <div id="userDropdown" class="user-dropdown-menu">
+            <div id="userDropdownMenu" class="user-dropdown-menu">
                 <div class="dropdown-header">My Account</div>
-                <a href="MyAccount.php" class="dropdown-item">👤 View Profile</a>
-                <a href="Cart.php" class="dropdown-item">🛒 My Orders / Cart</a>
+                <a href="../../../User/MyAccount.php" class="dropdown-item">👤 View Profile</a>
+                <a href="Orders.php" class="dropdown-item">📦 View Orders</a>
+                <a href="Cart.php" class="dropdown-item">🛒 Shopping Cart</a>
                 <div class="dropdown-divider"></div>
-                <a href="../MAIN.php" class="dropdown-item logout-link">🚪 Log Out</a>
+                <a href="/../MAIN.php" class="dropdown-item logout-link">🚪 Log Out</a>
             </div>
         </div>
     </nav>
 </header>
+<script>
+function toggleUserDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById("userDropdownMenu");
+    dropdown.classList.toggle("active");
+}
 
+// Close dropdown when clicking outside
+window.addEventListener("click", function() {
+    const dropdown = document.getElementById("userDropdownMenu");
+    if (dropdown && dropdown.classList.contains("active")) {
+        dropdown.classList.remove("active");
+    }
+});
+</script>
 <!-- DROPDOWN STYLES -->
 <style>
+.user-menu-wrapper {
+    position: relative;
+    display: inline-block;
+    z-index: 1001; /* Keeps button above hero section/overlays */
+}
+
+.auth-signup-btn {
+    position: relative;
+    z-index: 1002;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    border: none;
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: 125%;
+    right: 0;
+    width: 200px;
+    background: #0d1726;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 242, 254, 0.1);
+    display: none;
+    flex-direction: column;
+    z-index: 1003;
+    overflow: hidden;
+    padding: 6px 0;
+    padding-left: 50px;
+}
+
+.user-dropdown-menu.active {
+    display: flex !important;
+}
+
 .user-dropdown-menu {
     position: absolute;
     top: 125%;
@@ -63,6 +106,10 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 700;
+}
+
+.dropdown a {
+    color: pink;
 }
 
 .dropdown-item {
@@ -99,16 +146,22 @@
 
 <!-- DROPDOWN SCRIPT -->
 <script>
-function toggleUserDropdown(event) {
-    event.stopPropagation();
-    const menu = document.getElementById('userDropdown');
-    menu.classList.toggle('active');
-}
+document.addEventListener("DOMContentLoaded", function() {
+    const meBtn = document.getElementById("meBtn");
+    const dropdownMenu = document.getElementById("userDropdownMenu");
 
-window.addEventListener('click', function(event) {
-    const menu = document.getElementById('userDropdown');
-    if (menu && menu.classList.contains('active')) {
-        menu.classList.remove('active');
+    if (meBtn && dropdownMenu) {
+        meBtn.addEventListener("click", function(event) {
+            event.stopPropagation();
+            dropdownMenu.classList.toggle("active");
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(event) {
+            if (!dropdownMenu.contains(event.target) && !meBtn.contains(event.target)) {
+                dropdownMenu.classList.remove("active");
+            }
+        });
     }
 });
 </script>

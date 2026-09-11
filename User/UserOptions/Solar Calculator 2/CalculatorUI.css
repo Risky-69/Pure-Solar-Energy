@@ -131,8 +131,10 @@ select option {
 }
 
 /* ENERGY GRADIENT SUBMIT BUTTON */
+/* Styling for both form submit and calculate buttons */
 button[type="submit"], 
-button.btn-calculate {
+button.btn-calculate,
+input[type="submit"] {
     background: linear-gradient(90deg, var(--solar-cyan) 0%, #4facfe 100%);
     color: #050a12;
     border: none;
@@ -146,6 +148,14 @@ button.btn-calculate {
     width: 100%;
     transition: all 0.25s ease;
     box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+}
+
+button[type="submit"]:hover, 
+button.btn-calculate:hover,
+input[type="submit"]:hover {
+    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.45);
+    transform: translateY(-2px);
+    filter: brightness(1.05);
 }
 
 button[type="submit"]:hover, button.btn-calculate:hover {

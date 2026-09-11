@@ -9,15 +9,22 @@ if (!isset($_SESSION['user_id']) && !isset($_SESSION['username'])) {
     exit;
 }
 
-require_once "../db.php";
+// Include database connection settings
+if (file_exists("../db.php")) {
+    require_once "../db.php";
+} elseif (file_exists("db.php")) {
+    require_once "db.php";
+}
 
-// $host    = 'localhost';
-// $db      = 'puresolarenergy';
-// $user    = 'root';
-// $pass    = ''; 
-// $charset = 'utf8mb4';
+// Set default connection credentials if not defined in db.php
+$host     = $host ?? "127.0.0.1";
+$port     = $port ?? 3306;
+$username = $username ?? $user ?? "root";
+$pass     = $pass ?? ""; 
+$dbname   = $dbname ?? $db ?? "puresolarenergy";
+$charset  = $charset ?? "utf8mb4";
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+$dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=$charset";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -25,7 +32,7 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
+    $pdo = new PDO($dsn, $username, $pass, $options);
 } catch (PDOException $e) {
     die("Database Connection Failed: " . $e->getMessage());
 }
@@ -39,45 +46,93 @@ if (isset($_GET['logout'])) {
 }
 
 $userId = $_SESSION['user_id'] ?? null;
-$username = $_SESSION['username'] ?? '';
+$sessionUsername = $_SESSION['username'] ?? '';
 
-// If user_id isn't in session yet, look it up
-if (!$userId && !empty($username)) {
+// If user_id isn't in session yet, look it up by username or email
+if (!$userId && !empty($sessionUsername)) {
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-    $stmt->execute([$username, $username]);
+    $stmt->execute([$sessionUsername, $sessionUsername]);
     $userData = $stmt->fetch();
     if ($userData) {
-        $userId = $userData['id'] ?? $userData['user_id'] ?? null;
+        $userId = $userData['id'];
         $_SESSION['user_id'] = $userId;
     }
 }
 
-// Fetch user profile info
-$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? OR user_id = ?");
-$stmt->execute([$userId, $userId]);
-$currentUser = $stmt->fetch() ?: ['username' => $username, 'email' => 'N/A'];
+// Fetch user profile info safely
+$currentUser = ['username' => $sessionUsername, 'email' => 'N/A'];
+if ($userId) {
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $fetchedUser = $stmt->fetch();
+    if ($fetchedUser) {
+        $currentUser = $fetchedUser;
+    }
+}
 
-// Fetch user orders (Safely handle case if orders table doesn't exist yet)
+// Active tab and search filter
+$activeStatus = $_GET['status'] ?? 'All';
+$searchQuery = trim($_GET['search'] ?? '');
+
+// Fetch user orders with filters
 $orders = [];
 try {
-    $orderStmt = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC");
-    $orderStmt->execute([$userId]);
-    $orders = $orderStmt->fetchAll();
+    $query = "SELECT * FROM orders WHERE user_id = :user_id";
+    $params = ['user_id' => $userId];
+
+    if ($activeStatus !== 'All') {
+        $statusKey = strtolower($activeStatus);
+        
+        // Map User Dashboard Tabs to Admin Status Dropdown Values
+        if ($statusKey === 'to_pay') {
+            $query .= " AND LOWER(status) = 'pending'";
+        } elseif ($statusKey === 'to_ship') {
+            $query .= " AND LOWER(status) = 'processing'";
+        } elseif ($statusKey === 'to_receive') {
+            $query .= " AND LOWER(status) = 'shipped'";
+        } elseif ($statusKey === 'completed') {
+            $query .= " AND (LOWER(status) = 'delivered' OR LOWER(status) = 'completed')";
+        } elseif ($statusKey === 'cancelled') {
+            $query .= " AND LOWER(status) = 'cancelled'";
+        } else {
+            // Fallback for Return Refund or exact matches
+            $query .= " AND LOWER(status) = :status";
+            $params['status'] = str_replace('_', ' ', $activeStatus);
+        }
+    }
+
+    $query .= " ORDER BY order_date DESC";
+    $orderStmt = $pdo->prepare($query);
+    $orderStmt->execute($params);
+    $rawOrders = $orderStmt->fetchAll();
+
+    // In-memory search filter for Order ID or Product Items
+    if (!empty($searchQuery)) {
+        foreach ($rawOrders as $order) {
+            $orderIdMatch = stripos((string)($order['id'] ?? ''), $searchQuery) !== false;
+            $itemsMatch = stripos($order['items'] ?? '', $searchQuery) !== false;
+            if ($orderIdMatch || $itemsMatch) {
+                $orders[] = $order;
+            }
+        }
+    } else {
+        $orders = $rawOrders;
+    }
 } catch (PDOException $e) {
-    // Orders table might not be created yet; fallback to empty array
     $orders = [];
 }
 
-// Fetch user vouchers (Safely handle case if vouchers table doesn't exist yet)
+// Fetch active vouchers
 $vouchers = [];
 try {
     $voucherStmt = $pdo->prepare("SELECT * FROM vouchers WHERE user_id = ? AND status = 'active'");
     $voucherStmt->execute([$userId]);
     $vouchers = $voucherStmt->fetchAll();
 } catch (PDOException $e) {
-    // Vouchers table might not be created yet; fallback to empty array
     $vouchers = [];
 }
+
+$searchParam = !empty($searchQuery) ? '&search=' . urlencode($searchQuery) : '';
 ?>
 
 <!DOCTYPE html>
@@ -87,128 +142,344 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Account - Pure Solar Energy</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: #f4f6f9; color: #333333; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #080e1e; color: #fff; min-height: 100vh; padding-bottom: 60px; }
+
+        /* Navigation Header */
+        .topbar {
+            background: #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 40px;
+            border-bottom: 1px solid #1e293b;
+        }
+        .topbar-left { font-weight: 700; color: #00f2fe; font-size: 1.1rem; }
+        .topbar-right { display: flex; align-items: center; gap: 15px; }
+        .btn-nav { color: #94a3b8; text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+        .btn-nav:hover { color: #00f2fe; }
+
+        /* Layout Grid */
+        .portal-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 25px;
+        }
+
+        /* Sidebar Style */
+        .sidebar-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 20px;
+        }
+        .avatar-lg {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .user-meta .username { font-weight: 700; color: #fff; font-size: 0.95rem; }
+        .user-meta .edit-profile { font-size: 0.8rem; color: #94a3b8; text-decoration: none; }
+        .user-meta .edit-profile:hover { color: #00f2fe; }
+
+        .sidebar-menu { list-style: none; }
+        .sidebar-menu li { margin-bottom: 8px; }
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.92rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background: #111a2e;
+            color: #00f2fe;
+            font-weight: 600;
+        }
+
+        /* Status Navigation Tabs */
+        .status-tabs {
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            overflow-x: auto;
+            margin-bottom: 15px;
+        }
+        .status-tab {
+            flex: 1;
+            text-align: center;
+            padding: 16px 12px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .status-tab:hover { color: #fff; }
+        .status-tab.active {
+            color: #00f2fe;
+            border-bottom-color: #00f2fe;
+            background: rgba(0, 242, 254, 0.03);
+        }
+
+        /* Search Filter Bar */
+        .search-bar-wrapper {
+            margin-bottom: 20px;
+        }
+        .search-form {
+            display: flex;
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        .search-btn {
+            background: #1e293b;
+            color: #00f2fe;
+            border: none;
+            padding: 0 20px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .search-btn:hover { background: #16223b; }
+
+        /* Order Card Styling */
+        .order-card {
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .order-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #1e293b;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        .shop-title { font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .order-status {
+            text-transform: uppercase;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #00f2fe;
+            letter-spacing: 0.5px;
+        }
+
+        .product-item {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #1e293b;
+        }
+        .product-item:last-child { border-bottom: none; }
+        .product-img {
+            width: 70px;
+            height: 70px;
+            background: #1e293b;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .product-details { flex: 1; }
+        .product-name { color: #fff; font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+        .product-qty { color: #64748b; font-size: 0.85rem; }
+        .product-price { color: #00f2fe; font-weight: 700; font-size: 1rem; }
+
+        .order-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #1e293b;
+        }
+        .order-total-label { color: #94a3b8; font-size: 0.9rem; }
+        .order-total-val { color: #00f2fe; font-size: 1.3rem; font-weight: 700; margin-left: 6px; }
         
-        /* Top Navigation Bar */
-        .topbar { background: #ffffff; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; border-bottom: 1px solid #e2e8f0; }
-        .topbar-left { display: flex; align-items: center; gap: 20px; font-weight: 600; color: #1e293b; }
-        .topbar-right { display: flex; align-items: center; gap: 20px; }
-        .btn-logout { background: #fee2e2; color: #991b1b; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
-        .btn-logout:hover { background: #fecaca; }
-        .avatar { width: 35px; height: 35px; border-radius: 50%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .action-btns { display: flex; gap: 10px; }
+        .btn-action {
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary { background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%); color: #000; }
+        .btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+        .btn-secondary:hover { background: #334155; color: #fff; }
 
-        /* Hero Banner Section */
-        .hero-banner { background: #6366f1; padding: 40px 40px 80px 40px; color: white; }
-        .hero-banner h1 { margin: 0; font-size: 1.8rem; font-weight: 600; }
-        .hero-banner p { margin: 5px 0 0 0; opacity: 0.9; font-size: 0.95rem; }
+        .empty-orders {
+            text-align: center;
+            padding: 60px 20px;
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            color: #64748b;
+        }
 
-        /* Main Layout Container */
-        .content-container { max-width: 1200px; margin: -40px auto 40px auto; padding: 0 30px; display: flex; flex-direction: column; gap: 30px; }
-        
-        /* Profile Summary Card */
-        .profile-card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; justify-content: space-between; align-items: center; }
-        .profile-info h3 { margin: 0; color: #0f172a; font-size: 1.2rem; }
-        .profile-info p { margin: 5px 0 0 0; color: #64748b; font-size: 0.9rem; }
-
-        /* Card Sections */
-        .card-box { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
-        .card-box h2 { margin-top: 0; font-size: 1.2rem; color: #1e293b; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
-
-        /* Voucher Grid */
-        .voucher-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
-        .voucher-item { background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 15px; position: relative; }
-        .voucher-item h4 { margin: 0 0 5px 0; color: #4f46e5; font-size: 1rem; }
-        .voucher-item p { margin: 0; font-size: 0.85rem; color: #64748b; }
-
-        /* Tables */
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background-color: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; letter-spacing: 0.5px; }
-        td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.9rem; }
-        tr:hover { background-color: #f8fafc; }
-        .empty-row { text-align: center; color: #94a3b8; padding: 30px; }
+        /* Responsive UI */
+        @media (max-width: 850px) {
+            .portal-container { grid-template-columns: 1fr; }
+            .status-tabs { overflow-x: scroll; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Top Navigation Bar -->
+    <!-- Top Navigation Header -->
     <div class="topbar">
         <div class="topbar-left">
-            <span>Pure Solar Energy &mdash; Account Dashboard</span>
+            ⚡ Pure Solar Energy
         </div>
         <div class="topbar-right">
-            <div class="avatar"><?= strtoupper(substr($currentUser['username'] ?? 'U', 0, 1)) ?></div>
-            <a href="my account.php?logout=true" class="btn-logout">Log Out</a>
+            <a href="UserIndex.php" class="btn-nav">🏠 Home</a>
+            <a href="Cart.php" class="btn-nav">🛒 Cart</a>
+            <a href="MyAccount.php?logout=true" class="btn-nav" style="color: #ef4444;">🚪 Logout</a>
         </div>
     </div>
 
-    <!-- Hero Header -->
-    <div class="hero-banner">
-        <h1>Welcome back, <?= htmlspecialchars($currentUser['username'] ?? 'Customer') ?>!</h1>
-        <p>Manage your orders, active vouchers, and personal information from your account hub.</p>
-    </div>
-
-    <!-- Main Content Grid -->
-    <div class="content-container">
-        
-        <!-- Account Summary -->
-        <div class="profile-card">
-            <div class="profile-info">
-                <h3>Account Details</h3>
-                <p><strong>Username:</strong> <?= htmlspecialchars($currentUser['username'] ?? 'N/A') ?></p>
-                <p><strong>Email:</strong> <?= htmlspecialchars($currentUser['email'] ?? 'N/A') ?></p>
+    <div class="portal-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-profile">
+                <div class="avatar-lg"><?= strtoupper(substr($currentUser['username'] ?? 'U', 0, 1)) ?></div>
+                <div class="user-meta">
+                    <div class="username"><?= htmlspecialchars($currentUser['username'] ?? 'User') ?></div>
+                    <!-- <a href="ViewProfile.php" class="edit-profile">✏️ Edit Profile</a> -->
+                </div>
             </div>
-            <div>
-                <a href="my account.php?logout=true" class="btn-logout" style="padding: 10px 20px;">Logout of Account</a>
-            </div>
-        </div>
 
-        <!-- My Vouchers Section -->
-        <div class="card-box">
-            <h2>My Vouchers & Discounts</h2>
-            <?php if (empty($vouchers)): ?>
-                <div class="empty-row" style="padding: 20px;">You currently have no active vouchers available.</div>
-            <?php else: ?>
-                <div class="voucher-grid">
-                    <?php foreach ($vouchers as $voucher): ?>
-                        <div class="voucher-item">
-                            <h4><?= htmlspecialchars($voucher['code']) ?></h4>
-                            <p><?= htmlspecialchars($voucher['description'] ?? 'Discount Voucher') ?></p>
+            <ul class="sidebar-menu">
+                <li><a href="MyAccount.php" class="active">📦 My Purchase</a></li>
+                <li><a href="#">🔔 Notifications</a></li>
+                <li><a href="#">🏷️ My Vouchers (<?= count($vouchers) ?>)</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- Status Navigation Tabs -->
+            <nav class="status-tabs">
+                <a href="MyAccount.php?status=All<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'All' ? 'active' : '' ?>">All</a>
+                <a href="MyAccount.php?status=To_Pay<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'To_Pay' ? 'active' : '' ?>">To Pay</a>
+                <a href="MyAccount.php?status=To_Ship<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'To_Ship' ? 'active' : '' ?>">To Ship</a>
+                <a href="MyAccount.php?status=To_Receive<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'To_Receive' ? 'active' : '' ?>">To Receive</a>
+                <a href="MyAccount.php?status=Completed<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'Completed' ? 'active' : '' ?>">Completed</a>
+                <a href="MyAccount.php?status=Cancelled<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'Cancelled' ? 'active' : '' ?>">Cancelled</a>
+                <a href="MyAccount.php?status=Return_Refund<?= $searchParam ?>" class="status-tab <?= $activeStatus === 'Return_Refund' ? 'active' : '' ?>">Return Refund</a>
+            </nav>
+
+            <!-- Search Filter Bar -->
+            <div class="search-bar-wrapper">
+                <form method="GET" action="MyAccount.php" class="search-form">
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($activeStatus) ?>">
+                    <input type="text" name="search" class="search-input" placeholder="You can search by Order ID or Product name" value="<?= htmlspecialchars($searchQuery) ?>">
+                    <button type="submit" class="search-btn">Search</button>
+                </form>
+            </div>
+
+            <!-- Order Cards List -->
+            <?php if (!empty($orders)): ?>
+                <?php foreach ($orders as $order): 
+                    $orderId = $order['id'] ?? 'N/A';
+                    $items = json_decode($order['items'] ?? '[]', true) ?: [];
+                    $orderStatus = $order['status'] ?? 'Processing';
+                    $totalAmount = $order['total_amount'] ?? 0;
+                ?>
+                    <div class="order-card">
+                        <div class="order-card-header">
+                            <div class="shop-title">
+                                🏬 Pure Solar Official Store
+                            </div>
+                            <div class="order-status"><?= htmlspecialchars($orderStatus) ?></div>
                         </div>
-                    <?php endforeach; ?>
+
+                        <div class="order-card-body">
+                            <?php if (!empty($items)): ?>
+                                <?php foreach ($items as $item): ?>
+                                    <div class="product-item">
+                                        <div class="product-img">☀️</div>
+                                        <div class="product-details">
+                                            <div class="product-name"><?= htmlspecialchars($item['product_name'] ?? 'Solar Product') ?></div>
+                                            <div class="product-qty">x<?= htmlspecialchars($item['quantity'] ?? 1) ?></div>
+                                        </div>
+                                        <div class="product-price">$<?= number_format(($item['price'] ?? 0) * ($item['quantity'] ?? 1), 2) ?></div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="product-item">
+                                    <div class="product-img">📦</div>
+                                    <div class="product-details">
+                                        <div class="product-name">Order #<?= htmlspecialchars($orderId) ?></div>
+                                        <div class="product-qty">Placed on <?= htmlspecialchars($order['order_date'] ?? 'N/A') ?></div>
+                                    </div>
+                                    <div class="product-price">$<?= number_format($totalAmount, 2) ?></div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="order-card-footer">
+                            <div class="order-total">
+                                <span class="order-total-label">Order Total:</span>
+                                <span class="order-total-val">$<?= number_format($totalAmount, 2) ?></span>
+                            </div>
+                            <div class="action-btns">
+                                <!-- Included 'shipped' here so the button shows up under To Receive -->
+                                <?php if (in_array(strtolower($orderStatus), ['to receive', 'delivered', 'shipped'])): ?>
+                                    <button class="btn-action btn-primary">Order Received</button>
+                                <?php endif; ?>
+                                <button class="btn-action btn-secondary">Contact Support</button>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-orders">
+                    <p style="font-size: 1.1rem; margin-bottom: 8px;">No orders found</p>
+                    <p style="font-size: 0.85rem; color: #475569;">When you place an order, it will appear here under "<?= htmlspecialchars(str_replace('_', ' ', $activeStatus)) ?>".</p>
                 </div>
             <?php endif; ?>
-        </div>
 
-        <!-- My Orders Section -->
-        <div class="card-box">
-            <h2>Order History</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Date</th>
-                        <th>Total Amount</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($orders)): ?>
-                        <tr><td colspan="4" class="empty-row">You haven't placed any orders yet.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($orders as $order): ?>
-                            <tr>
-                                <td>#<?= htmlspecialchars($order['id'] ?? $order['order_id']) ?></td>
-                                <td><?= htmlspecialchars($order['created_at'] ?? 'N/A') ?></td>
-                                <td>$<?= number_format($order['total_amount'] ?? 0, 2) ?></td>
-                                <td><span style="font-weight: 600; color: #059669;"><?= htmlspecialchars($order['status'] ?? 'Processing') ?></span></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-
+        </main>
     </div>
 
 </body>

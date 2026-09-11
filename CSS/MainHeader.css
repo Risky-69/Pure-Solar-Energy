@@ -67,6 +67,7 @@ body {
     margin-left: 25px;
     font-weight: 500;
     transition: all 0.3s ease;
+    padding-right: 30px;
 }
 
 .nav-links a:hover, .nav-links a.active {
@@ -84,6 +85,7 @@ body {
 }
 
 .nav-links a[href*="Login"]:hover {
+    padding: 10px 20px 10px 20px;
     background-color: var(--accent-yellow);
     color: var(--bg-dark-blue);
     box-shadow: 0 0 12px rgba(244, 180, 26, 0.4);

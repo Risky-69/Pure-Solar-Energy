@@ -10,7 +10,7 @@
 <body>
     <div class="calculator-container">
         <h2>Solar Energy Calculator</h2>
-        <a href="User/UserIndex.php" class="btn-return-home">🏠 Return to Home</a>
+        <a href="../../UserIndex.php" class="btn-return-home">🏠 Return to Home</a>
        
         
         <!-- Input Form -->
@@ -66,7 +66,7 @@
                 </select>
             </div>
 
-            <button type="button" onclick="calculateSolar()">Calculate System</button>
+            <button type="submit" onclick="calculateSolar()">Calculate System</button>
         </form>
         <!-- Results Display -->
         <div class="results-container" id="results" style="display:none;">
